@@ -6,14 +6,15 @@ import java.util.List;
 import java.util.UUID;
 
 @Entity
-@Table(
-    name = "merchant",
-    uniqueConstraints = {
+@Table(name = "merchant", uniqueConstraints = {
         @UniqueConstraint(columnNames = "email"),
         @UniqueConstraint(columnNames = "api_key")
-    }
-)
+})
 public class Merchant {
+    // No-argument constructor for JPA and general use
+    public Merchant() {
+    }
+
     @Id
     @GeneratedValue
     private UUID id;
@@ -36,19 +37,10 @@ public class Merchant {
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
 
-    @Column(
-        name = "created_at",
-        nullable = false,
-        updatable = false,
-        columnDefinition = "TIMESTAMPTZ"
-    )
+    @Column(name = "created_at", nullable = false, updatable = false, columnDefinition = "TIMESTAMPTZ")
     private OffsetDateTime createdAt;
 
-    @Column(
-        name = "updated_at",
-        nullable = false,
-        columnDefinition = "TIMESTAMPTZ"
-    )
+    @Column(name = "updated_at", nullable = false, columnDefinition = "TIMESTAMPTZ")
     private OffsetDateTime updatedAt;
 
     @OneToMany(mappedBy = "merchant", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -57,7 +49,6 @@ public class Merchant {
     @OneToMany(mappedBy = "merchant", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Payment> payments;
 
-    
     public Merchant(UUID id, String name, String email, String apiKey, String apiSecret, String webhookUrl,
             Boolean isActive, OffsetDateTime createdAt, OffsetDateTime updatedAt) {
         this.id = id;
@@ -70,11 +61,11 @@ public class Merchant {
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
-    
+
     public UUID getId() {
         return id;
     }
-    
+
     public void setId(UUID id) {
         this.id = id;
     }
@@ -177,5 +168,5 @@ public class Merchant {
     protected void onUpdate() {
         this.updatedAt = OffsetDateTime.now();
     }
-    
+
 }
