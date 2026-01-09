@@ -83,6 +83,20 @@ Public endpoints (for checkout) are marked below.
 - API Secret: secret_test_xyz789
 - Retrieve: `GET /api/v1/test/merchant` (public)
 
+## API Endpoints Reference
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/health` | No | System health check (DB, Redis, Worker) |
+| GET | `/api/v1/test/merchant` | No | Get test merchant credentials |
+| POST | `/api/v1/orders` | Yes | Create order |
+| GET | `/api/v1/orders/{order_id}` | Yes | Get order (merchant-only) |
+| GET | `/api/v1/orders/{order_id}/public` | No | Get order (public for checkout) |
+| POST | `/api/v1/payments` | Yes | Create payment (authenticated) |
+| GET | `/api/v1/payments/{payment_id}` | Yes | Get payment (merchant-only) |
+| POST | `/api/v1/payments/public` | No | Create payment (public for checkout) |
+| GET | `/api/v1/payments/{payment_id}/public` | No | Get payment (public for checkout) |
+
 ## Amounts
 - All amounts are in paise (integers) in the API/database.
 - Frontend and docs display rupees for readability; convert as needed.
@@ -160,6 +174,7 @@ curl http://localhost:8000/api/v1/payments/{payment_id}
 ## 📚 Documentation
 
 - [Architecture & Flows](ARCHITECTURE.md) — System design, components, and data flows.
+- [Database Schema](DATABASE.md) — Table relationships, constraints, and indexes.
 - [API Tests](api-tests.http) — Example curl commands (REST Client format).
 
 ## 🎯 Quick Reference
