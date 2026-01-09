@@ -1,0 +1,239 @@
+### Payment Gateway API Testing
+### Use REST Client extension in VS Code to run these requests
+
+@baseUrl = http://localhost:8000
+@apiKey = key_test_abc123
+@apiSecret = secret_test_xyz789
+
+### 1. Health Check
+GET {{baseUrl}}/health
+
+### 2. Get Test Merchant Details
+GET {{baseUrl}}/api/v1/test/merchant
+
+### 3. Create Order
+# @name createOrder
+POST {{baseUrl}}/api/v1/orders
+X-Api-Key: {{apiKey}}
+X-Api-Secret: {{apiSecret}}
+Content-Type: application/json
+
+{
+  "amount": 50000,
+  "currency": "INR",
+  "receipt": "receipt_001",
+  "notes": {
+    "customer_name": "John Doe",
+    "email": "john@example.com"
+  }
+}
+
+### 4. Get Order by ID (update order_id from response above)
+@orderId = order_xxxxxxxxx
+GET {{baseUrl}}/api/v1/orders/{{orderId}}
+X-Api-Key: {{apiKey}}
+X-Api-Secret: {{apiSecret}}
+
+### 5. Get Order by ID (Public - no auth)
+GET {{baseUrl}}/api/v1/orders/{{orderId}}/public
+
+### 6. Create UPI Payment
+# @name createUpiPayment
+POST {{baseUrl}}/api/v1/payments
+X-Api-Key: {{apiKey}}
+X-Api-Secret: {{apiSecret}}
+Content-Type: application/json
+
+{
+  "order_id": "{{orderId}}",
+  "method": "upi",
+  "vpa": "test@paytm"
+}
+
+### 7. Create Card Payment (Visa)
+# @name createCardPayment
+POST {{baseUrl}}/api/v1/payments
+X-Api-Key: {{apiKey}}
+X-Api-Secret: {{apiSecret}}
+Content-Type: application/json
+
+{
+  "order_id": "{{orderId}}",
+  "method": "card",
+  "card": {
+    "number": "4111111111111111",
+    "expiry_month": 12,
+    "expiry_year": 2025,
+    "cvv": "123",
+    "holder_name": "John Doe"
+  }
+}
+
+### 8. Create Card Payment (Mastercard)
+POST {{baseUrl}}/api/v1/payments
+X-Api-Key: {{apiKey}}
+X-Api-Secret: {{apiSecret}}
+Content-Type: application/json
+
+{
+  "order_id": "{{orderId}}",
+  "method": "card",
+  "card": {
+    "number": "5500000000000004",
+    "expiry_month": 12,
+    "expiry_year": 2026,
+    "cvv": "456",
+    "holder_name": "Jane Smith"
+  }
+}
+
+### 9. Create Card Payment (Amex)
+POST {{baseUrl}}/api/v1/payments
+X-Api-Key: {{apiKey}}
+X-Api-Secret: {{apiSecret}}
+Content-Type: application/json
+
+{
+  "order_id": "{{orderId}}",
+  "method": "card",
+  "card": {
+    "number": "340000000000009",
+    "expiry_month": 6,
+    "expiry_year": 2027,
+    "cvv": "1234",
+    "holder_name": "Alice Johnson"
+  }
+}
+
+### 10. Create Card Payment (RuPay)
+POST {{baseUrl}}/api/v1/payments
+X-Api-Key: {{apiKey}}
+X-Api-Secret: {{apiSecret}}
+Content-Type: application/json
+
+{
+  "order_id": "{{orderId}}",
+  "method": "card",
+  "card": {
+    "number": "6521540123456789",
+    "expiry_month": 3,
+    "expiry_year": 2025,
+    "cvv": "789",
+    "holder_name": "Bob Wilson"
+  }
+}
+
+### 11. Get Payment Status (update payment_id from response above)
+@paymentId = pay_xxxxxxxxx
+GET {{baseUrl}}/api/v1/payments/{{paymentId}}
+X-Api-Key: {{apiKey}}
+X-Api-Secret: {{apiSecret}}
+
+### 12. Get Payment Status (Public - no auth)
+GET {{baseUrl}}/api/v1/payments/{{paymentId}}/public
+
+### 13. Create Payment with Public Endpoint (for checkout page)
+POST {{baseUrl}}/api/v1/payments/public
+Content-Type: application/json
+
+{
+  "order_id": "{{orderId}}",
+  "method": "upi",
+  "vpa": "checkout@paytm"
+}
+
+### Error Cases
+
+### 14. Invalid VPA Format
+POST {{baseUrl}}/api/v1/payments
+X-Api-Key: {{apiKey}}
+X-Api-Secret: {{apiSecret}}
+Content-Type: application/json
+
+{
+  "order_id": "{{orderId}}",
+  "method": "upi",
+  "vpa": "invalid-vpa-format"
+}
+
+### 15. Invalid Card Number (fails Luhn check)
+POST {{baseUrl}}/api/v1/payments
+X-Api-Key: {{apiKey}}
+X-Api-Secret: {{apiSecret}}
+Content-Type: application/json
+
+{
+  "order_id": "{{orderId}}",
+  "method": "card",
+  "card": {
+    "number": "1234567890123456",
+    "expiry_month": 12,
+    "expiry_year": 2025,
+    "cvv": "123",
+    "holder_name": "Invalid Card"
+  }
+}
+
+### 16. Expired Card
+POST {{baseUrl}}/api/v1/payments
+X-Api-Key: {{apiKey}}
+X-Api-Secret: {{apiSecret}}
+Content-Type: application/json
+
+{
+  "order_id": "{{orderId}}",
+  "method": "card",
+  "card": {
+    "number": "4111111111111111",
+    "expiry_month": 1,
+    "expiry_year": 2020,
+    "cvv": "123",
+    "holder_name": "Expired Card"
+  }
+}
+
+### 17. Invalid Authentication
+POST {{baseUrl}}/api/v1/orders
+X-Api-Key: invalid_key
+X-Api-Secret: invalid_secret
+Content-Type: application/json
+
+{
+  "amount": 10000,
+  "currency": "INR",
+  "receipt": "test_001"
+}
+
+### 18. Invalid Amount (below minimum)
+POST {{baseUrl}}/api/v1/orders
+X-Api-Key: {{apiKey}}
+X-Api-Secret: {{apiSecret}}
+Content-Type: application/json
+
+{
+  "amount": 50,
+  "currency": "INR",
+  "receipt": "test_001"
+}
+
+### 19. Missing Required Fields
+POST {{baseUrl}}/api/v1/payments
+X-Api-Key: {{apiKey}}
+X-Api-Secret: {{apiSecret}}
+Content-Type: application/json
+
+{
+  "method": "upi"
+}
+
+### 20. Non-existent Order ID
+POST {{baseUrl}}/api/v1/payments
+X-Api-Key: {{apiKey}}
+X-Api-Secret: {{apiSecret}}
+Content-Type: application/json
+
+{
+  "order_id": "order_nonexistent123",
+  "method": "upi",
+  "vpa": "test@paytm"
+}

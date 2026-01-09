@@ -1,0 +1,808 @@
+Description
+Objective
+In this project, you will build the foundational components of a payment gateway similar to Razorpay or Stripe. This is a significant step up from basic CRUD applications as you'll implement merchant onboarding, payment order management, multi-method payment processing (UPI and Cards), and a hosted checkout page.
+
+You'll gain hands-on experience with API authentication patterns, payment validation logic, state machines for transaction lifecycle management, and building user-facing payment interfaces. By the end of this deliverable, you'll have a functional payment gateway where merchants can create payment orders via API, and customers can complete payments through a hosted checkout page. This project will demonstrate your ability to build financial technology systems and handle sensitive transaction flows—skills highly valued in the fintech and e-commerce industries.
+
+Core Requirements
+Dockerized deployment with all services (API, database, frontend) running via docker-compose up -d in a single command
+RESTful API with fixed endpoints for creating orders, processing payments, and querying transaction status
+Merchant authentication using API key and secret for all protected endpoints
+Payment processing for both UPI (with VPA validation) and Card payments (with Luhn algorithm validation and network detection)
+Hosted checkout page where customers are redirected to complete their payment with a professional UI
+Database persistence with proper schema for merchants, orders, and payments with correct relationships
+Implementation Details
+Project Structure
+While you can use any technology stack, here's a recommended structure using Java Spring Boot as reference:
+
+payment-gateway/
+├── docker-compose.yml
+├── README.md
+├── .env.example
+├── backend/
+│   ├── Dockerfile
+│   ├── pom.xml / build.gradle
+│   ├── src/
+│   │   └── main/
+│   │       ├── java/com/gateway/
+│   │       │   ├── PaymentGatewayApplication.java
+│   │       │   ├── config/
+│   │       │   │   └── SecurityConfig.java
+│   │       │   ├── controllers/
+│   │       │   │   ├── HealthController.java
+│   │       │   │   ├── OrderController.java
+│   │       │   │   └── PaymentController.java
+│   │       │   ├── models/
+│   │       │   │   ├── Merchant.java
+│   │       │   │   ├── Order.java
+│   │       │   │   └── Payment.java
+│   │       │   ├── repositories/
+│   │       │   ├── services/
+│   │       │   │   ├── OrderService.java
+│   │       │   │   ├── PaymentService.java
+│   │       │   │   └── ValidationService.java
+│   │       │   └── dto/
+│   │       └── resources/
+│   │           ├── application.properties
+│   │           └── schema.sql
+├── frontend/
+│   ├── Dockerfile
+│   ├── package.json
+│   ├── src/
+│   │   ├── pages/
+│   │   │   ├── Login.jsx
+│   │   │   ├── Dashboard.jsx
+│   │   │   └── Transactions.jsx
+│   │   └── components/
+└── checkout-page/
+    ├── Dockerfile
+    ├── src/
+    │   ├── pages/
+    │   │   ├── Checkout.jsx
+    │   │   ├── Success.jsx
+    │   │   └── Failure.jsx
+    │   └── components/
+Docker Compose Configuration
+Your docker-compose.yml must define these exact service names and ports:
+
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: pg_gateway
+    environment:
+      POSTGRES_DB: payment_gateway
+      POSTGRES_USER: gateway_user
+      POSTGRES_PASSWORD: gateway_pass
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gateway_user -d payment_gateway"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ./backend
+    container_name: gateway_api
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://gateway_user:gateway_pass@postgres:5432/payment_gateway
+      PORT: 8000
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  dashboard:
+    build:
+      context: ./frontend
+    container_name: gateway_dashboard
+    ports:
+      - "3000:80"
+    depends_on:
+      - api
+
+  checkout:
+    build:
+      context: ./checkout-page
+    container_name: gateway_checkout
+    ports:
+      - "3001:80"
+    depends_on:
+      - api
+Database Schema
+Your database must implement the following schema with these exact table structures, field names, data types, and relationships:
+
+Merchants Table:
+
+id: Unique identifier (UUID format), primary key, auto-generated
+name: Merchant name (string, up to 255 characters), required
+email: Email address (string, up to 255 characters), required, must be unique
+api_key: API key for authentication (string, up to 64 characters), required, must be unique
+api_secret: API secret for authentication (string, up to 64 characters), required
+webhook_url: Webhook URL for event notifications (text, optional)
+is_active: Active status flag (boolean), defaults to true
+created_at: Creation timestamp, auto-set to current time
+updated_at: Last update timestamp, auto-set to current time
+Orders Table:
+
+id: Order identifier (string, up to 64 characters), primary key, format: "order_" + 16 alphanumeric characters
+merchant_id: Reference to merchants table (UUID), required, foreign key to merchants(id)
+amount: Order amount in smallest currency unit (integer), required (minimum 100)
+currency: Currency code (string, 3 characters), defaults to 'INR'
+receipt: Receipt identifier (string, up to 255 characters), optional
+notes: Additional notes/metadata (JSON object), optional
+status: Order status (string, up to 20 characters), defaults to 'created'
+created_at: Creation timestamp, auto-set to current time
+updated_at: Last update timestamp, auto-set to current time
+Payments Table:
+
+id: Payment identifier (string, up to 64 characters), primary key, format: "pay_" + 16 alphanumeric characters
+order_id: Reference to orders table (string, up to 64 characters), required, foreign key to orders(id)
+merchant_id: Reference to merchants table (UUID), required, foreign key to merchants(id)
+amount: Payment amount in smallest currency unit (integer), required
+currency: Currency code (string, 3 characters), defaults to 'INR'
+method: Payment method (string, up to 20 characters), required (values: "upi" or "card")
+status: Payment status (string, up to 20 characters), defaults to 'created' (but should be set to 'processing' immediately upon creation)
+vpa: Virtual Payment Address for UPI payments (string, up to 255 characters), optional, only for UPI method
+card_network: Card network identifier (string, up to 20 characters), optional, only for card method (values: "visa", "mastercard", "amex", "rupay", "unknown")
+card_last4: Last 4 digits of card number (string, 4 characters), optional, only for card method
+error_code: Error code if payment fails (string, up to 50 characters), optional
+error_description: Error description if payment fails (text), optional
+created_at: Creation timestamp, auto-set to current time
+updated_at: Last update timestamp, auto-set to current time
+Required Indexes:
+
+Index on orders.merchant_id for efficient merchant order queries
+Index on payments.order_id for efficient order payment queries
+Index on payments.status for efficient status-based queries
+Database seeding requirement: Your application must automatically create a test merchant on startup with these exact credentials:
+
+id: 550e8400-e29b-41d4-a716-446655440000
+name: Test Merchant
+email: test@example.com
+api_key: key_test_abc123
+api_secret: secret_test_xyz789
+created_at: Current timestamp at startup
+If a merchant with this email already exists, skip the insertion (handle duplicate gracefully). This test merchant must be available immediately after application startup for testing purposes.
+
+API Specification
+All endpoints must be implemented exactly as specified below:
+
+Base URL: http://localhost:8000
+
+1. Health Check Endpoint
+GET /health
+
+Response 200:
+{
+  "status": "healthy",
+  "database": "connected",
+  "timestamp": "2024-01-15T10:30:00Z"
+}
+Implementation requirements:
+
+Create an endpoint handler for GET /health that does not require authentication
+Verify database connectivity by attempting a simple database query
+Check if the application is ready to serve requests
+Return a JSON response with the following structure:
+status: String value "healthy"
+database: String value "connected" (or "disconnected" if database check fails)
+timestamp: ISO 8601 formatted timestamp string (e.g., "2024-01-15T10:30:00Z")
+Return HTTP status code 200 on success
+Enhanced Health Check for Deliverable 2 (Required): For Deliverable 2, the health check endpoint should also include Redis and worker status:
+
+{
+  "status": "healthy",
+  "database": "connected",
+  "redis": "connected",
+  "worker": "running",
+  "timestamp": "2024-01-15T10:30:00Z"
+}
+redis: String value "connected" (or "disconnected" if Redis check fails)
+worker: String value "running" (or "stopped" if worker is not processing jobs)
+This allows evaluators to verify all required services are operational in a single request.
+
+2. Create Order Endpoint
+POST /api/v1/orders
+
+Headers:
+X-Api-Key: key_test_abc123
+X-Api-Secret: secret_test_xyz789
+Content-Type: application/json
+
+Request Body:
+{
+  "amount": 50000,
+  "currency": "INR",
+  "receipt": "receipt_123",
+  "notes": {
+    "customer_name": "John Doe"
+  }
+}
+
+Response 201:
+{
+  "id": "order_NXhj67fGH2jk9mPq",
+  "merchant_id": "550e8400-e29b-41d4-a716-446655440000",
+  "amount": 50000,
+  "currency": "INR",
+  "receipt": "receipt_123",
+  "notes": {
+    "customer_name": "John Doe"
+  },
+  "status": "created",
+  "created_at": "2024-01-15T10:30:00Z"
+}
+
+Error Response 400:
+{
+  "error": {
+    "code": "BAD_REQUEST_ERROR",
+    "description": "amount must be at least 100"
+  }
+}
+
+Error Response 401:
+{
+  "error": {
+    "code": "AUTHENTICATION_ERROR",
+    "description": "Invalid API credentials"
+  }
+}
+Error Response Standardization (Required for Evaluation): All error responses must use these exact error codes:
+
+AUTHENTICATION_ERROR - Invalid API credentials
+BAD_REQUEST_ERROR - Validation errors
+NOT_FOUND_ERROR - Resource not found
+PAYMENT_FAILED - Payment processing failed (if used)
+INVALID_VPA - VPA format invalid (if used)
+INVALID_CARD - Card validation failed (if used)
+EXPIRED_CARD - Card expiry date invalid (if used)
+INSUFFICIENT_REFUND_AMOUNT - Refund amount exceeds available (Deliverable 2)
+Error descriptions should be clear and match the examples provided. Exact error code matching is required for automated evaluation.
+
+Implementation requirements:
+
+Create an endpoint handler for POST /api/v1/orders that requires authentication
+Extract and validate API credentials from request headers:
+X-Api-Key: Must match an existing merchant's api_key in the database
+X-Api-Secret: Must match the corresponding api_secret for that merchant
+If credentials are invalid, return 401 with error code "AUTHENTICATION_ERROR"
+Validate request body:
+amount: Must be an integer >= 100 (minimum amount is 100 paise = ₹1.00)
+Note: Amounts are stored in paise (smallest currency unit)
+Example: ₹500.00 = 50000 paise
+currency: Optional, defaults to "INR" if not provided
+receipt: Optional string identifier
+notes: Optional JSON object for additional metadata
+If validation fails, return 400 with error code "BAD_REQUEST_ERROR"
+Generate order ID:
+Format: "order_" followed by exactly 16 alphanumeric characters
+Must be unique (check for collisions and regenerate if needed)
+Create order record in database:
+Set status to "created"
+Associate with the authenticated merchant
+Store all provided fields
+Set timestamps (created_at, updated_at)
+Return response:
+HTTP status code 201
+JSON body containing all order fields including generated id, merchant_id, status, and timestamps
+Order ID generation: Must follow format order_ followed by exactly 16 alphanumeric characters (e.g., order_NXhj67fGH2jk9mPq)
+
+3. Get Order Endpoint
+GET /api/v1/orders/{order_id}
+
+Headers:
+X-Api-Key: key_test_abc123
+X-Api-Secret: secret_test_xyz789
+
+Response 200:
+{
+  "id": "order_NXhj67fGH2jk9mPq",
+  "merchant_id": "550e8400-e29b-41d4-a716-446655440000",
+  "amount": 50000,
+  "currency": "INR",
+  "receipt": "receipt_123",
+  "notes": {},
+  "status": "created",
+  "created_at": "2024-01-15T10:30:00Z",
+  "updated_at": "2024-01-15T10:30:00Z"
+}
+
+Error Response 404:
+{
+  "error": {
+    "code": "NOT_FOUND_ERROR",
+    "description": "Order not found"
+  }
+}
+4. Create Payment Endpoint
+POST /api/v1/payments
+
+Headers:
+X-Api-Key: key_test_abc123
+X-Api-Secret: secret_test_xyz789
+Content-Type: application/json
+
+Request Body (UPI):
+{
+  "order_id": "order_NXhj67fGH2jk9mPq",
+  "method": "upi",
+  "vpa": "user@paytm"
+}
+
+Request Body (Card):
+{
+  "order_id": "order_NXhj67fGH2jk9mPq",
+  "method": "card",
+  "card": {
+    "number": "4111111111111111",
+    "expiry_month": "12",
+    "expiry_year": "2025",
+    "cvv": "123",
+    "holder_name": "John Doe"
+  }
+}
+
+Response 201 (UPI):
+{
+  "id": "pay_H8sK3jD9s2L1pQr",
+  "order_id": "order_NXhj67fGH2jk9mPq",
+  "amount": 50000,
+  "currency": "INR",
+  "method": "upi",
+  "vpa": "user@paytm",
+  "status": "processing",
+  "created_at": "2024-01-15T10:31:00Z"
+}
+
+Response 201 (Card):
+{
+  "id": "pay_H8sK3jD9s2L1pQr",
+  "order_id": "order_NXhj67fGH2jk9mPq",
+  "amount": 50000,
+  "currency": "INR",
+  "method": "card",
+  "card_network": "visa",
+  "card_last4": "1111",
+  "status": "processing",
+  "created_at": "2024-01-15T10:31:00Z"
+}
+Implementation requirements:
+
+Create an endpoint handler for POST /api/v1/payments that requires authentication
+
+Extract and validate API credentials from request headers (same as order creation endpoint)
+
+Verify order exists and belongs to the authenticated merchant:
+
+Look up order by order_id from request body
+Ensure order.merchant_id matches the authenticated merchant
+If order not found or doesn't belong to merchant, return 404 or 400 error
+Validate payment method specific fields based on method in request body:
+
+For UPI payments (method: "upi"):
+
+Validate vpa field is present and matches VPA format (see VPA validation below)
+If invalid, return 400 with appropriate error message
+For Card payments (method: "card"):
+
+Validate card object contains: number, expiry_month, expiry_year, cvv, holder_name
+Validate card number using Luhn algorithm (see Card validation below)
+Detect card network from card number (see Network detection below)
+Validate expiry date is in the future (see Expiry validation below)
+Extract and store only last 4 digits of card number (never store full card number or CVV)
+If any validation fails, return 400 with appropriate error message
+Generate payment ID:
+
+Format: "pay_" followed by exactly 16 alphanumeric characters
+Must be unique (check for collisions and regenerate if needed)
+Create payment record in database:
+
+Set status to "processing" immediately upon creation (payment never goes through "created" state)
+Store payment method, amount (from order), currency, and method-specific fields
+For cards: store card_network and card_last4 only
+Set timestamps (created_at, updated_at)
+Process payment synchronously:
+
+Add a delay of 5-10 seconds (random within this range) to simulate bank processing
+Determine success/failure randomly:
+UPI: 90% success rate (90% chance of success, 10% chance of failure)
+Card: 95% success rate (95% chance of success, 5% chance of failure)
+Update payment status in database:
+If successful: set status to "success"
+If failed: set status to "failed" and populate error_code and error_description fields
+Update updated_at timestamp
+Return response:
+
+HTTP status code 201
+JSON body containing payment details including id, order_id, amount, method, status, and method-specific fields
+For cards: include card_network and card_last4
+For UPI: include vpa
+Test Mode for Evaluation (Required): Your implementation must support test mode via environment variables to enable deterministic testing:
+
+TEST_MODE=true - Enables deterministic payment outcomes
+TEST_PAYMENT_SUCCESS=true/false - Forces payment success/failure (overrides random logic when TEST_MODE=true)
+TEST_PROCESSING_DELAY=<milliseconds> - Sets exact processing delay in milliseconds (overrides random 5-10s range when TEST_MODE=true)
+When TEST_MODE=true:
+
+Payment success/failure should be deterministic based on TEST_PAYMENT_SUCCESS (default: true if not set)
+Processing delays should use TEST_PROCESSING_DELAY value instead of random range (default: 1000ms if not set)
+This allows automated evaluation to have predictable outcomes
+Note: This test mode is required for accurate automated evaluation. Your production code should still use random logic when TEST_MODE is not enabled.
+
+Validation logic you must implement:
+
+VPA Validation:
+
+Implement a function to validate Virtual Payment Address (VPA) format
+VPA must match the pattern: ^[a-zA-Z0-9._-]+@[a-zA-Z0-9]+$
+Before @: One or more alphanumeric characters, dots, underscores, or hyphens
+After @: One or more alphanumeric characters (bank/provider identifier)
+Valid examples: user@paytm, john.doe@okhdfcbank, user_123@phonepe
+Invalid examples: user @paytm (space not allowed), @paytm (missing username), user@@bank (double @), user@ (missing provider)
+Card Number Validation (Luhn Algorithm):
+
+Implement a function to validate card numbers using the Luhn algorithm:
+Remove all spaces and dashes from the card number
+Verify the cleaned number contains only digits and has length between 13 and 19 characters
+Apply Luhn algorithm:
+Start from the rightmost digit
+Moving left, double every second digit (2nd from right, 4th from right, etc.)
+If any doubled digit is greater than 9, subtract 9 from it
+Sum all digits (both doubled and unchanged)
+The card number is valid if the sum modulo 10 equals 0
+Return true if valid, false otherwise
+Card Network Detection:
+
+Implement a function to detect the card network from the card number
+First, remove all spaces and dashes from the card number
+Check the first digits to determine network:
+Visa: Card number starts with 4
+Mastercard: Card number starts with 51, 52, 53, 54, or 55 (two digits: 51-55)
+Amex: Card number starts with 34 or 37 (two digits)
+RuPay: Card number starts with 60, 65, or any number from 81 to 89 (two digits: 81-89)
+Return one of: "visa", "mastercard", "amex", "rupay", or "unknown" if no match
+Expiry Validation:
+
+Implement a function to validate card expiry date
+Parse the month value: must be an integer between 1 and 12
+Parse the year value: accept both formats:
+2-digit format (e.g., "25"): Treat as 20XX, so "25" = 2025
+4-digit format (e.g., "2025"): Use as-is
+Compare the expiry date (month/year combination) with the current date
+The expiry date must be in the future or current month (expiry >= current month/year)
+Return true if valid, false otherwise
+Payment Processing Flow:
+
+Validate all inputs
+Create payment record with status processing immediately (payment never goes through created state)
+Add 5-10 second delay (simulate bank processing)
+Randomly determine success/failure (90% for UPI, 95% for cards)
+Update payment status to success or failed
+If failed, populate error_code and error_description
+Note: The payment status flow is: processing → success/failed. The created state is skipped - payments are created directly with processing status.
+
+5. Get Payment Endpoint
+GET /api/v1/payments/{payment_id}
+
+Headers:
+X-Api-Key: key_test_abc123
+X-Api-Secret: secret_test_xyz789
+
+Response 200:
+{
+  "id": "pay_H8sK3jD9s2L1pQr",
+  "order_id": "order_NXhj67fGH2jk9mPq",
+  "amount": 50000,
+  "currency": "INR",
+  "method": "upi",
+  "vpa": "user@paytm",
+  "status": "success",
+  "created_at": "2024-01-15T10:31:00Z",
+  "updated_at": "2024-01-15T10:31:10Z"
+}
+6. Test Endpoints (Required for Evaluation)
+These endpoints are required for automated evaluation and help verify system state:
+
+GET /api/v1/test/merchant
+
+Returns test merchant details if seeded correctly
+No authentication required (test endpoint)
+Response 200:
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "email": "test@example.com",
+  "api_key": "key_test_abc123",
+  "seeded": true
+}
+Response 404 if test merchant doesn't exist
+Note: These test endpoints are required for automated evaluation. They provide visibility into system state without requiring direct database access.
+
+Frontend Requirements
+Dashboard Application (Port 3000)
+Required pages with exact data-test-id attributes:
+
+1. Login Page (/login):
+
+<form data-test-id="login-form">
+  <input 
+    data-test-id="email-input" 
+    type="email" 
+    placeholder="Email"
+  />
+  <input 
+    data-test-id="password-input" 
+    type="password" 
+    placeholder="Password"
+  />
+  <button data-test-id="login-button">Login</button>
+</form>
+For this deliverable, you can use the test merchant credentials directly (no registration needed).
+
+Login Credentials: Use these exact credentials to log into the dashboard:
+
+Email: test@example.com
+Password: Any password (not validated for Deliverable 1 - you can implement simple email-based authentication or use API key/secret)
+The dashboard should display the merchant's API credentials after login.
+
+2. Dashboard Home (/dashboard):
+
+<div data-test-id="dashboard">
+  <div data-test-id="api-credentials">
+    <div>
+      <label>API Key</label>
+      <span data-test-id="api-key">key_test_abc123</span>
+    </div>
+    <div>
+      <label>API Secret</label>
+      <span data-test-id="api-secret">secret_test_xyz789</span>
+    </div>
+  </div>
+  
+  <div data-test-id="stats-container">
+    <div data-test-id="total-transactions">100</div>
+    <div data-test-id="total-amount">₹5,00,000</div>
+    <div data-test-id="success-rate">95%</div>
+  </div>
+</div>
+Note: The example values shown above (100, ₹5,00,000, 95%) are placeholders. Your implementation should:
+
+Calculate total-transactions from the actual count of payments in the database
+Calculate total-amount from the sum of all successful payment amounts
+Calculate success-rate as (successful payments / total payments) × 100
+Display real-time data from your database, not hardcoded values
+3. Transactions Page (/dashboard/transactions):
+
+<table data-test-id="transactions-table">
+  <thead>
+    <tr>
+      <th>Payment ID</th>
+      <th>Order ID</th>
+      <th>Amount</th>
+      <th>Method</th>
+      <th>Status</th>
+      <th>Created</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr data-test-id="transaction-row" data-payment-id="pay_123">
+      <td data-test-id="payment-id">pay_123</td>
+      <td data-test-id="order-id">order_456</td>
+      <td data-test-id="amount">50000</td>
+      <td data-test-id="method">upi</td>
+      <td data-test-id="status">success</td>
+      <td data-test-id="created-at">2024-01-15 10:31:00</td>
+    </tr>
+  </tbody>
+</table>
+Checkout Page (Port 3001)
+Checkout Flow (/checkout?order_id=xxx):
+
+The checkout page must:
+
+Accept order_id as query parameter
+Fetch order details from API
+Display payment method selection
+Show payment form based on selected method
+Process payment and show result
+Required HTML structure with data-test-id:
+
+<div data-test-id="checkout-container">
+  <!-- Order Summary -->
+  <div data-test-id="order-summary">
+    <h2>Complete Payment</h2>
+    <div>
+      <span>Amount: </span>
+      <span data-test-id="order-amount">₹500.00</span>
+    </div>
+    <div>
+      <span>Order ID: </span>
+      <span data-test-id="order-id">order_123</span>
+    </div>
+  </div>
+  
+  <!-- Payment Method Selection -->
+  <div data-test-id="payment-methods">
+    <button 
+      data-test-id="method-upi" 
+      data-method="upi"
+      onclick="showUPIForm()"
+    >
+      UPI
+    </button>
+    <button 
+      data-test-id="method-card" 
+      data-method="card"
+      onclick="showCardForm()"
+    >
+      Card
+    </button>
+  </div>
+  
+  <!-- UPI Payment Form -->
+  <form data-test-id="upi-form" style="display:none">
+    <input 
+      data-test-id="vpa-input" 
+      placeholder="username@bank"
+      type="text"
+    />
+    <button data-test-id="pay-button" type="submit">
+      Pay ₹500
+    </button>
+  </form>
+  
+  <!-- Card Payment Form -->
+  <form data-test-id="card-form" style="display:none">
+    <input 
+      data-test-id="card-number-input" 
+      placeholder="Card Number"
+      type="text"
+    />
+    <input 
+      data-test-id="expiry-input" 
+      placeholder="MM/YY"
+      type="text"
+    />
+    <input 
+      data-test-id="cvv-input" 
+      placeholder="CVV"
+      type="text"
+    />
+    <input 
+      data-test-id="cardholder-name-input" 
+      placeholder="Name on Card"
+      type="text"
+    />
+    <button data-test-id="pay-button" type="submit">
+      Pay ₹500
+    </button>
+  </form>
+  
+  <!-- Processing State -->
+  <div data-test-id="processing-state" style="display:none">
+    <div class="spinner"></div>
+    <span data-test-id="processing-message">
+      Processing payment...
+    </span>
+  </div>
+  
+  <!-- Success State -->
+  <div data-test-id="success-state" style="display:none">
+    <h2>Payment Successful!</h2>
+    <div>
+      <span>Payment ID: </span>
+      <span data-test-id="payment-id">pay_123</span>
+    </div>
+    <span data-test-id="success-message">
+      Your payment has been processed successfully
+    </span>
+  </div>
+  
+  <!-- Error State -->
+  <div data-test-id="error-state" style="display:none">
+    <h2>Payment Failed</h2>
+    <span data-test-id="error-message">
+      Payment could not be processed
+    </span>
+    <button data-test-id="retry-button">Try Again</button>
+  </div>
+</div>
+Checkout page behavior:
+
+On page load, fetch order details using order_id from URL
+Display order amount and details
+When user selects payment method, show appropriate form
+On form submit, call /api/v1/payments endpoint
+Show processing state during payment
+Poll /api/v1/payments/{payment_id} every 2 seconds to check status
+When status changes to success or failed, show appropriate state
+Checkout Page API Authentication: The checkout page needs to make unauthenticated API calls. Implement one of these approaches:
+
+Public Endpoints (Recommended): Create public endpoints for checkout flow:
+
+GET /api/v1/orders/{order_id}/public - Returns order details (no auth required, only basic info: id, amount, currency, status)
+POST /api/v1/payments/public - Creates payment from checkout page (no auth required, but validate order_id belongs to a valid merchant)
+Alternative: Make the existing endpoints accept optional authentication - if no auth headers are provided, allow access when order_id is validated to belong to a valid merchant.
+
+The checkout page should use these public endpoints instead of the authenticated merchant endpoints.
+
+Environment Configuration
+Create .env.example:
+
+DATABASE_URL=postgresql://gateway_user:gateway_pass@postgres:5432/payment_gateway
+PORT=8000
+
+# Test merchant credentials (pre-seeded)
+TEST_MERCHANT_EMAIL=test@example.com
+TEST_API_KEY=key_test_abc123
+TEST_API_SECRET=secret_test_xyz789
+
+# Payment simulation config
+UPI_SUCCESS_RATE=0.90
+CARD_SUCCESS_RATE=0.95
+PROCESSING_DELAY_MIN=5000
+PROCESSING_DELAY_MAX=10000
+
+# Test mode for evaluation (required)
+TEST_MODE=false
+TEST_PAYMENT_SUCCESS=true
+TEST_PROCESSING_DELAY=1000
+
+# Webhook retry test mode (Deliverable 2, required)
+WEBHOOK_RETRY_INTERVALS_TEST=false
+Common Mistakes
+Incorrect ID format: Order IDs must start with order_ and payment IDs with pay_, followed by exactly 16 alphanumeric characters. Using UUIDs or other formats will fail automated tests.
+
+Missing health check endpoint: The /health endpoint must return exactly the specified JSON structure. This is the first endpoint tested and many submissions fail here.
+
+Incorrect HTTP status codes: Use 201 for resource creation (orders, payments), 200 for successful GET requests, 400 for validation errors, 401 for authentication failures, and 404 for not found errors.
+
+Not implementing authentication: Every API endpoint except /health must validate X-Api-Key and X-Api-Secret headers. Many students forget this and APIs remain open.
+
+Incorrect payment status flow: Payments must go through these states correctly: processing → success/failed. Payments are created directly with processing status (skip the created state). Never skip the processing state.
+
+Missing data-test-id attributes: Frontend automated tests rely on these exact attributes. Missing or misnamed attributes cause test failures even if functionality works.
+
+Not seeding test merchant: Your application must automatically create the test merchant with exact credentials specified. Evaluators won't manually create merchants.
+
+Improper card validation: Simply checking length isn't enough—implement the full Luhn algorithm. Also ensure you're storing only last 4 digits of cards, never full numbers.
+
+Hardcoded ports in code: Use environment variables for all ports and connection strings so the application works correctly in Docker.
+
+Docker services not waiting for dependencies: Use health checks and depends_on with conditions to ensure services start in correct order. Many submissions fail because API starts before database is ready.
+
+FAQs
+Q: Can I use a different tech stack instead of Java Spring Boot?
+A: Yes! You can use Node.js (Express/NestJS), Python (Django/FastAPI), Go, or any other stack. The specifications (API endpoints, response formats, data-test-ids) must remain exactly the same regardless of technology choice.
+
+Q: Do I need to implement actual payment processing with banks?
+A: No. This is a simulation. Your payment processing should add a 5-10 second delay, then randomly return success/failure based on configured success rates (90% for UPI, 95% for cards). No real banking integrations are needed.
+
+Q: How should I handle the payment processing delay?
+A: For Deliverable 1, implement synchronous processing with Thread.sleep() or equivalent. The API should wait 5-10 seconds before returning the final payment status. (Deliverable 2 will introduce asynchronous job processing.)
+
+Q: What should I do with card CVV and full card numbers?
+A: Never store CVV or full card numbers in your database. Validate the card number and CVV during payment creation, but only store the card network (visa/mastercard) and last 4 digits in the database.
+
+Q: Can I add additional API endpoints beyond what's specified?
+A: Yes, you can add extra endpoints for enhanced functionality, but all specified endpoints with exact request/response formats must be implemented first as they are part of automated evaluation.
+
+Q: How will the data-test-id attributes be used in evaluation?
+A: Automated Selenium tests will locate elements using these attributes to verify your frontend functionality. If attributes are missing or incorrect, tests will fail even if the UI looks perfect.
+
+Q: Should I implement user registration for merchants?
+A: Not required for Deliverable 1. Just ensure the test merchant is auto-seeded on application startup with the exact credentials provided. You can add registration as an extra feature if you want.
+
+Q: What should the checkout page URL format be?
+A: The checkout page must be accessible at http://localhost:3001/checkout?order_id={order_id}. The order_id query parameter is mandatory.
+
+Q: How do I test if my implementation is correct before submission?
+A: Test using the provided test credentials to create orders via API (using Postman/curl), then access the checkout page with that order_id. Verify the payment flow works end-to-end and all data-test-id attributes are present in your HTML.
+
+Q: What happens if docker-compose up fails?
+A: This will result in zero score as automated evaluation cannot proceed. Ensure all Dockerfiles are correct, health checks are implemented, and services start successfully with proper dependency ordering before submitting.
