@@ -16,7 +16,6 @@ import com.example.gateway.models.Order;
 import com.example.gateway.services.OrderService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestParam;
 
 
 @RestController
@@ -97,6 +96,45 @@ public class OrderController {
             if (errorCode.equals("AUTHENTICATION_ERROR")) {
                 status = HttpStatus.UNAUTHORIZED;
             } else if (errorCode.equals("NOT_FOUND_ERROR")) {
+                status = HttpStatus.NOT_FOUND;
+            } else {
+                status = HttpStatus.BAD_REQUEST;
+            }
+            
+            return ResponseEntity.status(status)
+                    .body(new ErrorResponse(errorCode, errorDescription));
+        }
+    }
+
+    @GetMapping("/api/v1/orders/{order_id}/public")
+    public ResponseEntity<?> getOrderPublic(@PathVariable String order_id) {
+        try {
+            Order savedOrder = orderService.getOrder(order_id);
+            
+            // Build response to avoid circular references
+            Map<String, Object> response = new HashMap<>();
+            response.put("id", savedOrder.getId());
+            response.put("merchant_id", savedOrder.getMerchant().getId());
+            response.put("amount", savedOrder.getAmount());
+            response.put("currency", savedOrder.getCurrency());
+            response.put("receipt", savedOrder.getReceipt());
+            response.put("notes", savedOrder.getNotes());
+            response.put("status", savedOrder.getStatus());
+            response.put("created_at", savedOrder.getCreatedAt());
+            
+            return ResponseEntity.status(HttpStatus.OK).body(response);
+        } catch (IllegalArgumentException e)  {
+            String[] parts = e.getMessage().split("\\|");
+            if (parts.length < 2) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(new ErrorResponse("BAD_REQUEST_ERROR", "Invalid error format"));
+            }
+            
+            String errorCode = parts[0];
+            String errorDescription = parts[1];
+            
+            HttpStatus status;
+            if (errorCode.equals("NOT_FOUND_ERROR")) {
                 status = HttpStatus.NOT_FOUND;
             } else {
                 status = HttpStatus.BAD_REQUEST;

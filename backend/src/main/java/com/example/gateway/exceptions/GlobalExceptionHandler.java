@@ -28,4 +28,37 @@ public class GlobalExceptionHandler {
         ErrorResponse errorResponse = new ErrorResponse("BAD_REQUEST_ERROR", description);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
     }
+
+    /**
+     * Handle IllegalArgumentException for payment validation errors
+     */
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ErrorResponse> handleIllegalArgumentException(IllegalArgumentException ex) {
+        String message = ex.getMessage();
+        
+        if (message == null) {
+            ErrorResponse errorResponse = new ErrorResponse("BAD_REQUEST_ERROR", "Invalid request");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+        }
+
+        // Parse error code and description from message format: "CODE|Description"
+        if (message.contains("|")) {
+            String[] parts = message.split("\\|", 2);
+            String code = parts[0];
+            String description = parts[1];
+            ErrorResponse errorResponse = new ErrorResponse(code, description);
+
+            // Return appropriate HTTP status based on error code
+            if (code.equals("AUTHENTICATION_ERROR")) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
+            } else if (code.equals("NOT_FOUND_ERROR")) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+            } else {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+            }
+        }
+
+        ErrorResponse errorResponse = new ErrorResponse("BAD_REQUEST_ERROR", message);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+    }
 }

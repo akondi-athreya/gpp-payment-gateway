@@ -3,7 +3,6 @@ package com.example.gateway.config;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import java.time.OffsetDateTime;
 import java.util.UUID;
 import com.example.gateway.models.Merchant;
 import com.example.gateway.repositories.MerchantRepository;
@@ -14,14 +13,15 @@ public class DataSeederConfig {
     @Bean
     public ApplicationRunner seedDatabase(MerchantRepository merchantRepository) {
         return args -> {
-            // Check if test merchant already exists by email
-            var existingMerchant = merchantRepository.findAll().stream()
+            try {
+                // Check if test merchant already exists by email
+                var existingMerchant = merchantRepository.findAll()
+                    .stream()
                     .filter(m -> m.getEmail().equals("test@example.com"))
                     .findFirst();
 
-            if (existingMerchant.isEmpty()) {
-                try {
-                    // Create test merchant (let database auto-generate ID)
+                if (existingMerchant.isEmpty()) {
+                    // Create test merchant
                     Merchant testMerchant = new Merchant();
                     testMerchant.setName("Test Merchant");
                     testMerchant.setEmail("test@example.com");
@@ -29,12 +29,13 @@ public class DataSeederConfig {
                     testMerchant.setApiSecret("secret_test_xyz789");
 
                     merchantRepository.save(testMerchant);
-                    System.out.println("✓ Test merchant created successfully!");
-                } catch (Exception e) {
-                    System.out.println("✓ Test merchant already exists or error creating merchant");
+                    System.out.println("✓ Test merchant created successfully");
+                } else {
+                    System.out.println("✓ Test merchant already exists, skipping insertion");
                 }
-            } else {
-                System.out.println("✓ Test merchant already exists, skipping insertion");
+            } catch (Exception e) {
+                System.err.println("✗ Error creating test merchant: " + e.getMessage());
+                e.printStackTrace();
             }
         };
     }
