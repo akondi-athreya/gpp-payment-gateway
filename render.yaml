@@ -1,13 +1,10 @@
 # Render.com Blueprint Configuration
-# Deploy Spring Boot API using native Java runtime
+# Web service only; create PostgreSQL and Redis manually in dashboard
 
 services:
   - type: web
     name: payment-gateway-api
-    runtime: java
-    runtimeVersion: 21
-    buildCommand: cd backend && ./mvnw clean package -DskipTests
-    startCommand: cd backend && java -jar target/*.jar
+    runtime: docker
     plan: free
     healthCheckPath: /health
     envVars:
