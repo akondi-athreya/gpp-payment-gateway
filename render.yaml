@@ -1,5 +1,5 @@
-# Render.com Deployment Configuration
-# This tells Render how to build and deploy the application
+# Render.com Blueprint Configuration
+# Web service only; create PostgreSQL and Redis manually in dashboard
 
 services:
   - type: web
@@ -11,32 +11,12 @@ services:
       - key: PORT
         value: 8000
       - key: DATABASE_URL
-        fromDatabase:
-          name: payment-postgres
-          property: connectionString
+        value: ${DATABASE_URL}
       - key: DATABASE_USERNAME
-        fromDatabase:
-          name: payment-postgres
-          property: user
+        value: ${DATABASE_USERNAME}
       - key: DATABASE_PASSWORD
-        fromDatabase:
-          name: payment-postgres
-          property: password
+        value: ${DATABASE_PASSWORD}
       - key: REDIS_HOST
-        fromService:
-          name: payment-redis
-          property: host
+        value: ${REDIS_HOST}
       - key: REDIS_PORT
-        fromService:
-          name: payment-redis
-          property: port
-
-  - type: pserv
-    name: payment-postgres
-    runtime: postgres
-    plan: free
-
-  - type: pserv
-    name: payment-redis
-    runtime: redis
-    plan: free
+        value: ${REDIS_PORT}
