@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Checkout</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .checkout-container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            max-width: 500px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        .checkout-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .checkout-header h1 {
+            color: #333;
+            font-size: 1.8em;
+            margin-bottom: 10px;
+        }
+
+        .order-details {
+            background: #f9fafb;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+
+        .order-details h3 {
+            color: #555;
+            font-size: 0.9em;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .amount-display {
+            font-size: 2.5em;
+            color: #667eea;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        .order-id {
+            color: #888;
+            font-size: 0.9em;
+        }
+
+        .payment-methods {
+            margin-bottom: 30px;
+        }
+
+        .payment-method-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .method-tab {
+            flex: 1;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            background: white;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .method-tab:hover {
+            border-color: #667eea;
+        }
+
+        .method-tab.active {
+            border-color: #667eea;
+            background: #f0f4ff;
+            color: #667eea;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 600;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .pay-button {
+            width: 100%;
+            padding: 15px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .pay-button:hover {
+            background: #5568d3;
+        }
+
+        .pay-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .status-message {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .status-message.processing {
+            background: #eff6ff;
+            color: #3b82f6;
+        }
+
+        .status-message.success {
+            background: #f0fdf4;
+            color: #22c55e;
+        }
+
+        .status-message.failed {
+            background: #fef2f2;
+            color: #ef4444;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            background: #fef2f2;
+            color: #991b1b;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #ef4444;
+        }
+    </style>
+</head>
+<body>
+    <div class="checkout-container" data-test-id="checkout-container">
+        <div class="checkout-header">
+            <h1>Secure Checkout</h1>
+        </div>
+
+        <div class="order-details" data-test-id="order-summary">
+            <h3>Order Summary</h3>
+            <div class="amount-display" id="amountDisplay" data-test-id="order-amount">₹0.00</div>
+            <div class="order-id" id="orderIdDisplay" data-test-id="order-id">Loading...</div>
+        </div>
+
+        <div id="errorContainer"></div>
+
+        <div class="payment-methods" data-test-id="payment-methods">
+            <div class="payment-method-tabs">
+                <div class="method-tab active" data-method="upi" data-test-id="method-upi" onclick="switchMethod('upi')">
+                    UPI
+                </div>
+                <div class="method-tab" data-method="card" data-test-id="method-card" onclick="switchMethod('card')">
+                    Card
+                </div>
+            </div>
+
+            <form id="paymentForm">
+                <!-- UPI Form -->
+                <div id="upiForm" data-test-id="upi-form">
+                    <div class="form-group">
+                        <label for="vpa">UPI ID</label>
+                        <input type="text" id="vpa" data-test-id="vpa-input" placeholder="username@paytm" required>
+                    </div>
+                </div>
+
+                <!-- Card Form -->
+                <div id="cardForm" class="hidden" data-test-id="card-form">
+                    <div class="form-group">
+                        <label for="cardNumber">Card Number</label>
+                        <input type="text" id="cardNumber" data-test-id="card-number-input" placeholder="4111 1111 1111 1111" maxlength="19">
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="expiryMonth">Expiry Month</label>
+                            <input type="number" id="expiryMonth" data-test-id="expiry-input" placeholder="12" min="1" max="12">
+                        </div>
+                        <div class="form-group">
+                            <label for="expiryYear">Expiry Year</label>
+                            <input type="number" id="expiryYear" placeholder="2025">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="cvv">CVV</label>
+                            <input type="text" id="cvv" data-test-id="cvv-input" placeholder="123" maxlength="4">
+                        </div>
+                        <div class="form-group">
+                            <label for="holderName">Cardholder Name</label>
+                            <input type="text" id="holderName" data-test-id="cardholder-name-input" placeholder="John Doe">
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" class="pay-button" id="payButton" data-test-id="pay-button">
+                    Pay Now
+                </button>
+            </form>
+
+            <div id="statusMessage" class="status-message hidden"></div>
+            <div id="processingState" class="hidden" data-test-id="processing-state">
+                <span data-test-id="processing-message">Processing payment...</span>
+            </div>
+            <div id="successState" class="hidden" data-test-id="success-state">
+                <h2>Payment Successful!</h2>
+                <div>
+                    <span>Payment ID: </span>
+                    <span id="successPaymentId" data-test-id="payment-id"></span>
+                </div>
+                <span data-test-id="success-message">Your payment has been processed successfully</span>
+            </div>
+            <div id="errorState" class="hidden" data-test-id="error-state">
+                <h2>Payment Failed</h2>
+                <span id="errorMessage" data-test-id="error-message">Payment could not be processed</span>
+                <button id="retryButton" data-test-id="retry-button" onclick="location.reload()">Try Again</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:8000';
+        let currentMethod = 'upi';
+        let orderData = null;
+        let paymentId = null;
+        let statusCheckInterval = null;
+
+        // Get order ID from URL query parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const orderId = urlParams.get('order_id');
+
+        // Load order details on page load
+        window.addEventListener('DOMContentLoaded', async () => {
+            if (!orderId) {
+                showError('No order ID provided');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/v1/orders/${orderId}/public`);
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error_description || 'Failed to load order');
+                }
+
+                orderData = data;
+                displayOrderDetails(data);
+            } catch (error) {
+                showError('Failed to load order: ' + error.message);
+            }
+        });
+
+        function displayOrderDetails(order) {
+            document.getElementById('amountDisplay').textContent = `₹${(order.amount / 100).toFixed(2)}`;
+            document.getElementById('orderIdDisplay').textContent = `Order ID: ${order.id}`;
+        }
+
+        function switchMethod(method) {
+            currentMethod = method;
+
+            // Update tabs
+            document.querySelectorAll('.method-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelector(`[data-method="${method}"]`).classList.add('active');
+
+            // Toggle forms
+            document.getElementById('upiForm').classList.toggle('hidden', method !== 'upi');
+            document.getElementById('cardForm').classList.toggle('hidden', method !== 'card');
+        }
+
+        function showError(message) {
+            const errorContainer = document.getElementById('errorContainer');
+            errorContainer.innerHTML = `<div class="error-message">${message}</div>`;
+        }
+
+        function clearError() {
+            document.getElementById('errorContainer').innerHTML = '';
+        }
+
+        function showStatus(message, type) {
+            const statusElement = document.getElementById('statusMessage');
+            statusElement.textContent = message;
+            statusElement.className = `status-message ${type}`;
+            statusElement.classList.remove('hidden');
+        }
+
+        function hideStatus() {
+            document.getElementById('statusMessage').classList.add('hidden');
+        }
+
+        async function createPayment(paymentData) {
+            const response = await fetch(`${API_BASE_URL}/api/v1/payments/public`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(paymentData),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error_description || 'Payment failed');
+            }
+
+            return data;
+        }
+
+        async function checkPaymentStatus(paymentId) {
+            const response = await fetch(`${API_BASE_URL}/api/v1/payments/${paymentId}/public`);
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error('Failed to check payment status');
+            }
+
+            return data;
+        }
+
+        function startStatusPolling(paymentId) {
+            statusCheckInterval = setInterval(async () => {
+                try {
+                    const payment = await checkPaymentStatus(paymentId);
+                    
+                    if (payment.status === 'success') {
+                        clearInterval(statusCheckInterval);
+                        document.getElementById('statusMessage').classList.add('hidden');
+                        document.getElementById('processingState').classList.add('hidden');
+                        document.getElementById('successState').classList.remove('hidden');
+                        document.getElementById('successPaymentId').textContent = payment.id;
+                        document.getElementById('payButton').disabled = false;
+                        document.getElementById('payButton').innerHTML = 'Payment Complete';
+                    } else if (payment.status === 'failed') {
+                        clearInterval(statusCheckInterval);
+                        document.getElementById('statusMessage').classList.add('hidden');
+                        document.getElementById('processingState').classList.add('hidden');
+                        document.getElementById('errorState').classList.remove('hidden');
+                        document.getElementById('errorMessage').textContent = payment.error_description || 'Payment could not be processed';
+                        document.getElementById('payButton').disabled = false;
+                        document.getElementById('payButton').innerHTML = 'Try Again';
+                    } else {
+                        document.getElementById('processingState').classList.remove('hidden');
+                        showStatus('⏳ Processing payment...', 'processing');
+                    }
+                } catch (error) {
+                    console.error('Status check error:', error);
+                }
+            }, 2000);
+        }
+
+        document.getElementById('paymentForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            clearError();
+            hideStatus();
+
+            const payButton = document.getElementById('payButton');
+            payButton.disabled = true;
+            payButton.innerHTML = '<span class="loading-spinner"></span> Processing...';
+
+            try {
+                const paymentData = {
+                    order_id: orderId,
+                    method: currentMethod,
+                };
+
+                if (currentMethod === 'upi') {
+                    paymentData.vpa = document.getElementById('vpa').value;
+                } else if (currentMethod === 'card') {
+                    paymentData.card = {
+                        number: document.getElementById('cardNumber').value.replace(/\s/g, ''),
+                        expiry_month: parseInt(document.getElementById('expiryMonth').value),
+                        expiry_year: parseInt(document.getElementById('expiryYear').value),
+                        cvv: document.getElementById('cvv').value,
+                        holder_name: document.getElementById('holderName').value,
+                    };
+                }
+
+                const payment = await createPayment(paymentData);
+                paymentId = payment.id;
+
+                showStatus('⏳ Processing payment...', 'processing');
+                startStatusPolling(paymentId);
+
+            } catch (error) {
+                showError(error.message);
+                payButton.disabled = false;
+                payButton.innerHTML = 'Pay Now';
+            }
+        });
+
+        // Format card number with spaces
+        document.getElementById('cardNumber')?.addEventListener('input', (e) => {
+            let value = e.target.value.replace(/\s/g, '');
+            let formattedValue = value.match(/.{1,4}/g)?.join(' ') || value;
+            e.target.value = formattedValue;
+        });
+    </script>
+</body>
+</html>
