@@ -225,16 +225,3 @@ public class Payment {
     }
 
 }
-
-enum PaymentMethod {
-    UPI,
-    CARD
-}
-
-enum CardNetwork {
-    VISA,
-    MASTERCARD,
-    AMEX,
-    RUPAY,
-    UNKNOWN
-}
