@@ -11,26 +11,32 @@ services:
       - key: PORT
         value: 8000
       - key: DATABASE_URL
-        sync: false
+        fromDatabase:
+          name: payment-postgres
+          property: connectionString
       - key: DATABASE_USERNAME
-        sync: false
+        fromDatabase:
+          name: payment-postgres
+          property: user
       - key: DATABASE_PASSWORD
-        sync: false
+        fromDatabase:
+          name: payment-postgres
+          property: password
       - key: REDIS_HOST
-        sync: false
+        fromService:
+          name: payment-redis
+          property: host
       - key: REDIS_PORT
-        value: 6379
+        fromService:
+          name: payment-redis
+          property: port
 
   - type: pserv
-    name: postgres
-    runtime: postgres15
+    name: payment-postgres
+    runtime: postgres
     plan: free
-    region: oregon
-    ipAllowList: []
 
   - type: pserv
-    name: redis
-    runtime: redis7
+    name: payment-redis
+    runtime: redis
     plan: free
-    region: oregon
-    ipAllowList: []
