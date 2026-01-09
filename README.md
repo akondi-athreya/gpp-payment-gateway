@@ -177,6 +177,26 @@ curl http://localhost:8000/api/v1/payments/{payment_id}
 - [Database Schema](DATABASE.md) — Table relationships, constraints, and indexes.
 - [API Tests](api-tests.http) — Example curl commands (REST Client format).
 
+## 📸 Screenshots
+
+Dashboard
+
+- Login page: ![login](docs/login.png)
+- Home dashboard: ![dashboard](docs/dashboard.png)
+- Transactions list: ![transactions](docs/transactions.png)
+- Transaction statistics: ![transaction_statistics](docs/transaction_statistics.png)
+
+API Flow (for demo video)
+
+- Order creation (API): ![order_creation](docs/order_creation.png)
+- Successful order creation: ![successfull_order_creation](docs/successfull_order_creation.png)
+- Payment creation (API): ![payment_creation](docs/payment_creation.png)
+
+Checkout Flow
+
+- Processing state: ![payment_processing](docs/payment_processing.png)
+- Success state: ![payment_successfull](docs/payment_successfull.png)
+
 ## 🎯 Quick Reference
 
 | Feature | Status | Details |
