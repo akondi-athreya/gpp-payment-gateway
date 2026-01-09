@@ -1,0 +1,10 @@
+# Railway Nixpacks configuration
+# Tells Railway how to build and run the application
+
+[build]
+# Use the root Dockerfile for building
+# Railway will auto-detect the Dockerfile in the root
+
+[start]
+# The default CMD from the Dockerfile will be used
+# No custom start command needed

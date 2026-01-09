@@ -12,15 +12,20 @@ COPY backend/src src
 
 RUN ./mvnw clean package -DskipTests
 
-# Use Ubuntu base instead of alpine for better runtime compatibility
-FROM eclipse-temurin:21-jre-jammy
+# Use standard eclipse-temurin JRE for runtime
+FROM eclipse-temurin:21-jre
 
 WORKDIR /app
 
+# Copy the built jar
 COPY --from=build /app/target/*.jar app.jar
 
-# Default to Railway's dynamic port assignment
+# Expose port (Railway will override)
 EXPOSE 8080
 
-# Use shell form to allow env var substitution
-CMD ["java", "-jar", "app.jar"]
+# Health check
+HEALTHCHECK --interval=10s --timeout=3s --start-period=5s --retries=3 \
+  CMD java -cp app.jar org.springframework.boot.loader.launch.PropertiesLauncher --server.port=${PORT:-8080} || exit 1
+
+# Start application - use exec form (no shell)
+ENTRYPOINT ["java", "-jar", "app.jar"]
