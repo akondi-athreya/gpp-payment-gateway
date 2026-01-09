@@ -1,0 +1,36 @@
+# Render.com Deployment Configuration
+# This tells Render how to build and deploy the application
+
+services:
+  - type: web
+    name: payment-gateway-api
+    runtime: docker
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: 8000
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_USERNAME
+        sync: false
+      - key: DATABASE_PASSWORD
+        sync: false
+      - key: REDIS_HOST
+        sync: false
+      - key: REDIS_PORT
+        value: 6379
+
+  - type: pserv
+    name: postgres
+    runtime: postgres15
+    plan: free
+    region: oregon
+    ipAllowList: []
+
+  - type: pserv
+    name: redis
+    runtime: redis7
+    plan: free
+    region: oregon
+    ipAllowList: []
