@@ -1,0 +1,123 @@
+.login-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  width: 100%;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  padding: 20px;
+  font-family: 'Noto Sans', 'Raleway', 'Montserrat', sans-serif;
+}
+
+.login-card {
+  background: #0f1419;
+  padding: 50px;
+  border-radius: 8px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  width: 100%;
+  max-width: 450px;
+  border: 1px solid #2a2d3a;
+}
+
+.login-card h1 {
+  text-align: center;
+  color: #ffffff;
+  margin-bottom: 8px;
+  font-size: 32px;
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 700;
+}
+
+.login-card h2 {
+  text-align: center;
+  color: #a0a0a0;
+  margin-bottom: 40px;
+  font-size: 16px;
+  font-weight: 400;
+  font-family: 'Raleway', sans-serif;
+}
+
+.form-group {
+  margin-bottom: 24px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  color: #e0e0e0;
+  font-weight: 600;
+  font-family: 'Noto Sans', sans-serif;
+  font-size: 14px;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid #3a3d4a;
+  border-radius: 6px;
+  font-size: 15px;
+  box-sizing: border-box;
+  transition: all 0.3s ease;
+  font-family: 'Noto Sans', sans-serif;
+  background: #1a1d2e;
+  color: #e0e0e0;
+}
+
+.form-group input::placeholder {
+  color: #707070;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: #4a9eff;
+  background: #222630;
+  color: #ffffff;
+}
+
+.btn-primary {
+  width: 100%;
+  padding: 12px;
+  background: #4a9eff;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: 'Montserrat', sans-serif;
+}
+
+.btn-primary:hover {
+  background: #3a8eef;
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(74, 158, 255, 0.3);
+}
+
+.error-message {
+  background: #2a1f1f;
+  border: 1px solid #5a3a3a;
+  color: #ff6b6b;
+  padding: 12px;
+  border-radius: 6px;
+  margin-bottom: 20px;
+  font-size: 14px;
+  font-family: 'Noto Sans', sans-serif;
+}
+
+.login-hint {
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 1px solid #eee;
+  text-align: center;
+  color: #666;
+  font-size: 14px;
+}
+
+.login-hint p {
+  margin: 5px 0;
+}
+
+.login-hint strong {
+  color: #333;
+}
