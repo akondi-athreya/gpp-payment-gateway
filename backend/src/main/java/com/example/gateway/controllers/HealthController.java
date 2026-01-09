@@ -5,6 +5,7 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.availability.ApplicationAvailability;
 import org.springframework.boot.availability.ReadinessState;
 import org.springframework.http.HttpStatus;
@@ -22,29 +23,37 @@ public class HealthController {
     private final StringRedisTemplate redisTemplate;
     private final ApplicationAvailability availability;
     private final WorkerStatusService workerStatusService;
+    private final boolean redisOptional;
+    private final boolean workerOptional;
 
     public HealthController(
             JdbcTemplate jdbcTemplate,
             StringRedisTemplate redisTemplate,
             ApplicationAvailability availability,
-            WorkerStatusService workerStatusService) {
+            WorkerStatusService workerStatusService,
+            @Value("${health.redis.optional:false}") boolean redisOptional,
+            @Value("${health.worker.optional:true}") boolean workerOptional) {
         this.jdbcTemplate = jdbcTemplate;
         this.redisTemplate = redisTemplate;
         this.availability = availability;
         this.workerStatusService = workerStatusService;
+        this.redisOptional = redisOptional;
+        this.workerOptional = workerOptional;
     }
 
     @GetMapping("/health")
     public ResponseEntity<Map<String, String>> healthController() {
         String databaseStatus = checkDatabase();
         String redisStatus = checkRedis();
-        String workerStatus = workerStatusService.isRunning() ? "running" : "stopped";
+        String workerStatus = checkWorker();
         boolean ready = availability.getReadinessState() == ReadinessState.ACCEPTING_TRAFFIC;
 
+        boolean databaseOk = "connected".equals(databaseStatus);
+        boolean redisOk = "connected".equals(redisStatus) || (redisOptional && !"connected".equals(redisStatus));
+        boolean workerOk = "running".equals(workerStatus) || (workerOptional && !"running".equals(workerStatus));
+
         Map<String, String> response = new LinkedHashMap<>();
-        response.put("status", ready && "connected".equals(databaseStatus)
-                && "connected".equals(redisStatus)
-                && "running".equals(workerStatus) ? "healthy" : "unhealthy");
+        response.put("status", ready && databaseOk && redisOk && workerOk ? "healthy" : "unhealthy");
         response.put("database", databaseStatus);
         response.put("redis", redisStatus);
         response.put("worker", workerStatus);
@@ -70,7 +79,15 @@ public class HealthController {
                 return "PONG".equalsIgnoreCase(pong) ? "connected" : "disconnected";
             }
         } catch (Exception e) {
-            return "disconnected";
+            return redisOptional ? "skipped" : "disconnected";
+        }
+    }
+
+    private String checkWorker() {
+        try {
+            return workerStatusService.isRunning() ? "running" : workerOptional ? "skipped" : "stopped";
+        } catch (Exception e) {
+            return workerOptional ? "skipped" : "stopped";
         }
     }
 }
