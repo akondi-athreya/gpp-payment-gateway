@@ -217,8 +217,3 @@ Checkout Flow
 3. **Process Payment**: POST /api/v1/payments and poll for status
 4. **Test Dashboard**: Navigate to http://localhost:3000
 5. **Test Checkout**: http://localhost:3001?order_id=order_xxx
-
-## License
-
-MIT
-
